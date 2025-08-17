@@ -1,0 +1,26 @@
+# Docker Compose configuration for CI/CD environments
+# Uses pre-built image instead of building locally
+version: '3.8'
+
+services:
+  api:
+    # Use the image parameter instead of build
+    # In CI, this will be set to the test image
+    image: ${DOCKER_IMAGE:-kernel-api:latest}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./temp:/app/temp
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENABLE_OPENCASCADE=${ENABLE_OPENCASCADE:-false}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped

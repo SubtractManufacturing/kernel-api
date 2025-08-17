@@ -144,23 +144,49 @@ jobs:
 
       - name: Run integration tests with docker-compose
         run: |
-          # Start services
-          docker-compose up -d
-
+          # Create a temporary docker-compose file that uses the test image
+          cat > docker-compose.test.yml << EOF
+          version: '3.8'
+          services:
+            api:
+              image: kernel-api:test
+              ports:
+                - "8001:8000"
+              environment:
+                - PYTHONUNBUFFERED=1
+                - LOG_LEVEL=INFO
+                - ENABLE_OPENCASCADE=false
+              volumes:
+                - ./uploads:/app/uploads
+                - ./outputs:/app/outputs
+                - ./temp:/app/temp
+          EOF
+          
+          # Start services with the test image
+          docker-compose -f docker-compose.test.yml up -d
+          
           # Wait for services to be ready
           echo "Waiting for services..."
-          sleep 10
-
+          for i in {1..30}; do
+            if curl -f http://localhost:8001/api/v1/health 2>/dev/null; then
+              echo "API is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "API failed to start. Logs:"
+              docker-compose -f docker-compose.test.yml logs
+              exit 1
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          
           # Check service health
-          docker-compose ps
-          curl -f http://localhost:8000/api/v1/health || {
-            echo "Services not healthy. Logs:"
-            docker-compose logs
-            exit 1
-          }
-
+          curl -f http://localhost:8001/api/v1/health || exit 1
+          
           # Clean up
-          docker-compose down
+          docker-compose -f docker-compose.test.yml down
+          rm -f docker-compose.test.yml
 
       - name: Build and push multi-platform Docker image
         if: github.event_name != 'pull_request' || github.event.inputs.push_image == 'true'

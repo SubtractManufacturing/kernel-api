@@ -4,22 +4,21 @@ on:
   push:
     branches:
       - main
-      - develop
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
     branches:
       - main
   workflow_dispatch:
     inputs:
       push_image:
-        description: 'Push image to registry'
+        description: "Push image to registry"
         required: false
-        default: 'false'
+        default: "false"
         type: choice
         options:
-          - 'true'
-          - 'false'
+          - "true"
+          - "false"
 
 env:
   REGISTRY: ghcr.io
@@ -79,7 +78,7 @@ jobs:
             -e ENABLE_OPENCASCADE=true \
             -e LOG_LEVEL=INFO \
             kernel-api:test
-          
+
           # Wait for the service to be ready
           echo "Waiting for API to start..."
           for i in {1..30}; do
@@ -95,15 +94,15 @@ jobs:
             echo "Waiting... ($i/30)"
             sleep 2
           done
-          
+
           # Run basic API tests
           echo "Testing health endpoint..."
           curl -f http://localhost:8000/api/v1/health || exit 1
-          
+
           echo "Testing formats endpoint..."
           FORMATS=$(curl -f http://localhost:8000/api/v1/formats)
           echo "Supported formats: $FORMATS"
-          
+
           # Test file conversion with a simple STL
           echo "Creating test STL file..."
           cat > test.stl << 'EOF'
@@ -117,14 +116,14 @@ jobs:
             endfacet
           endsolid test
           EOF
-          
+
           echo "Testing STL to OBJ conversion..."
           RESPONSE=$(curl -s -X POST http://localhost:8000/api/v1/convert \
             -F "file=@test.stl" \
             -F "output_format=obj" \
             -F "async_processing=false")
           echo "Conversion response: $RESPONSE"
-          
+
           # Clean up
           docker stop kernel-api-test
           docker rm kernel-api-test
@@ -134,11 +133,11 @@ jobs:
         run: |
           # Start services
           docker-compose up -d
-          
+
           # Wait for services to be ready
           echo "Waiting for services..."
           sleep 10
-          
+
           # Check service health
           docker-compose ps
           curl -f http://localhost:8000/api/v1/health || {
@@ -146,7 +145,7 @@ jobs:
             docker-compose logs
             exit 1
           }
-          
+
           # Clean up
           docker-compose down
 
@@ -179,7 +178,7 @@ jobs:
           echo "- Formats endpoint" >> $GITHUB_STEP_SUMMARY
           echo "- STL to OBJ conversion" >> $GITHUB_STEP_SUMMARY
           echo "- Docker Compose integration" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### 🚀 Deployment" >> $GITHUB_STEP_SUMMARY
@@ -204,13 +203,13 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          format: "sarif"
+          output: "trivy-results.sarif"
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
   release:
     runs-on: ubuntu-latest
@@ -231,32 +230,32 @@ jobs:
           generate_release_notes: true
           body: |
             ## 🚀 Kernel API Release
-            
+
             ### Docker Image
-            
+
             Pull the Docker image:
             ```bash
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ```
-            
+
             Run with Docker Compose:
             ```bash
             wget https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/docker-compose.yml
             docker-compose up -d
             ```
-            
+
             ### Quick Start
-            
+
             ```bash
             # Test the API
             curl http://localhost:8000/api/v1/health
-            
+
             # Convert a STEP file to STL
             curl -X POST http://localhost:8000/api/v1/convert \
               -F "file=@model.step" \
               -F "output_format=stl" \
               -o converted.stl
             ```
-            
+
             ### What's Changed
             See the full changelog below.

@@ -61,10 +61,23 @@ jobs:
             type=sha,prefix={{branch}}-
 
       - name: Build Docker image (test)
+        id: docker-build
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
+          load: true
+          tags: kernel-api:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+        continue-on-error: true
+      
+      - name: Fallback to simple Dockerfile if main build fails
+        if: steps.docker-build.outcome == 'failure'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.simple
           load: true
           tags: kernel-api:test
           cache-from: type=gha

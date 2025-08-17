@@ -34,6 +34,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv_wsl/
 
 # IDE specific files
 .idea/
@@ -128,4 +129,10 @@ CLAUDE.md
 uploads/
 outputs/
 temp/
-planning/
+
+# Keep folder structure but ignore generated files
+*.stl
+*.obj
+*.glb
+*.gltf
+!tests/fixtures/*.stl

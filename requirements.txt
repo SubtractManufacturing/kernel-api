@@ -8,14 +8,17 @@ pydantic==2.10.4
 pydantic-settings==2.7.0
 python-dotenv==1.0.1
 
-# OpenCascade Python bindings
-# Note: pythonocc-core requires conda for easiest installation
-# For pip installation, you may need to build from source or use pre-built wheels
-# pythonocc-core==7.8.1
+# CAD Processing Libraries
+# Note: OCP may have issues with Python 3.13 on Windows
+# Consider using Python 3.11 or 3.12 for full OpenCascade support
+ezdxf==1.3.4  # For DXF file support
+pygltflib==1.16.5  # For GLTF/GLB support
+# steputils not needed with OCP
 
 # Mesh processing and additional formats
 trimesh==4.5.3
 numpy==1.26.4
+scipy==1.16.1  # Required by trimesh for sparse matrix operations
 
 # Async and background tasks
 celery==5.4.0

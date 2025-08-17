@@ -119,7 +119,9 @@ kernel-api/
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- **Python 3.12** (REQUIRED for STEP/IGES conversion)
+  - Python 3.11 also works
+  - Python 3.13 has compatibility issues with OpenCascade
 - pip package manager
 - Git
 - Redis (optional, for async task processing)
@@ -133,25 +135,42 @@ kernel-api/
    cd kernel-api
    ```
 
-2. **Create and activate virtual environment**
+2. **Install Python 3.12** (if not already installed)
+   
+   Download from: https://www.python.org/downloads/release/python-3120/
+   - Choose "Windows installer (64-bit)"
+   - Check "Add Python to PATH" during installation
 
+3. **Set up Python 3.12 environment**
+
+   **Option A: Automated Setup (Recommended)**
    ```bash
-   # Windows
-   python -m venv venv
-   venv\Scripts\activate
+   # Windows Command Prompt
+   scripts\setup_python312.bat
+   
+   # Windows PowerShell
+   .\scripts\setup_python312.ps1
+   ```
 
+   **Option B: Manual Setup**
+   ```bash
+   # Windows - Create venv with Python 3.12
+   py -3.12 -m venv venv
+   venv\Scripts\activate
+   
    # Linux/Mac
-   python -m venv venv
+   python3.12 -m venv venv
    source venv/bin/activate
    ```
 
-3. **Install dependencies**
+4. **Install dependencies**
 
    ```bash
    pip install -r requirements.txt
+   pip install cadquery-ocp  # OpenCascade Python bindings
    ```
 
-4. **Set up environment variables**
+5. **Set up environment variables**
 
    ```bash
    # Copy the example file
@@ -314,3 +333,98 @@ Once the server is running, you can access:
 2. **Port already in use**: Change PORT in .env or kill existing process
 3. **File upload fails**: Check MAX_UPLOAD_SIZE and disk space
 4. **OpenCascade not found**: Follow OpenCascade installation guide in Phase 2
+
+### Contributing
+
+1. Follow the project structure conventions
+2. Write tests for new features
+3. Update documentation as needed
+4. Run code quality checks before committing
+
+## Status
+
+**Under Development** - Phase 2 Complete
+
+### Phase 1 (Complete)
+- ✅ Basic FastAPI application structure
+- ✅ Configuration management
+- ✅ Logging system
+- ✅ API endpoints
+- ✅ Basic testing framework
+
+### Phase 2 (Complete)
+- ✅ Conversion pipeline architecture
+- ✅ STL file reader/writer
+- ✅ OBJ exporter
+- ✅ GLB/GLTF exporter
+- ✅ Mesh quality controls
+- ✅ Error handling
+- ✅ OpenCascade integration via OCP (cadquery-ocp installed)
+- ⚠️ STEP/IGES readers (implemented but requires Python 3.11/3.12 for stability)
+
+### Current Capabilities
+- **Working Conversions**: STL ↔ OBJ, STL → GLB/GLTF
+- **STEP/IGES Support**: Implemented with OpenCascade (OCP library installed, best with Python 3.11/3.12)
+- **Quality Presets**: Low, Medium, High, Ultra
+- **Export Formats**: STL (ASCII/Binary), OBJ, GLB, GLTF
+- **API Endpoints**: Full REST API with file upload and conversion
+
+### Current Status with Python 3.12
+
+✅ **Working Features:**
+- Python 3.12 environment successfully set up
+- OCP (OpenCascade Python) installed and functional
+- STL ↔ OBJ conversion working
+- STL → GLB/GLTF conversion working
+- Basic shape creation and STL export via OCP working
+
+⚠️ **Known Issue with STEP Files:**
+- STEP file reading causes segmentation fault on Windows
+- This appears to be a Windows-specific issue with OCP's STEP reader
+- The implementation is complete but requires further troubleshooting
+
+**Workaround Options:**
+1. Use WSL2 (Windows Subsystem for Linux) with Python 3.12
+2. Use Docker container with Linux base (recommended for production)
+3. Use conda environment with pythonocc-core instead of OCP
+4. For now, use STL files as input (fully working)
+
+### Next Steps (Phase 3)
+- [ ] Async processing with Celery
+- [ ] Job queue management
+- [ ] Status tracking
+- [ ] Batch conversion support
+- [ ] Docker containerization
+
+## Testing the Conversion Pipeline
+
+Run the conversion test suite:
+```bash
+python tests/integration/test_conversion.py
+```
+
+Test the API with a sample file:
+```bash
+# Start the server
+python run.py
+
+# Send a file for conversion (from Windows)
+python utils/send_file_to_api.py sample.step stl
+
+# Or use the web interface
+# Open utils/web_upload.html in your browser
+```
+
+## WSL2 Setup (Recommended for STEP Files)
+
+For full STEP/IGES support without segmentation faults, use WSL2:
+
+📖 **[WSL2 Setup Guide](docs/setup_wsl.md)**
+
+This allows you to run the Linux version of the API on Windows with full OpenCascade support.
+
+## Additional Documentation
+
+- 📚 [STEP Conversion Solutions Guide](docs/STEP_CONVERSION_GUIDE.md) - Comprehensive guide for handling STEP files
+- 🛠️ [Utilities Documentation](utils/README.md) - How to use the conversion utilities
+- 📋 [API Planning Overview](planning/overview.md) - Development roadmap

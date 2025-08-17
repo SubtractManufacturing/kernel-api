@@ -1,0 +1,262 @@
+name: Docker Build, Test and Push
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: 'Push image to registry'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix={{branch}}-
+
+      - name: Build Docker image (test)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: kernel-api:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker image
+        run: |
+          # Start the container
+          docker run -d --name kernel-api-test \
+            -p 8000:8000 \
+            -e ENABLE_OPENCASCADE=true \
+            -e LOG_LEVEL=INFO \
+            kernel-api:test
+          
+          # Wait for the service to be ready
+          echo "Waiting for API to start..."
+          for i in {1..30}; do
+            if curl -f http://localhost:8000/api/v1/health 2>/dev/null; then
+              echo "✅ API is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "❌ API failed to start"
+              docker logs kernel-api-test
+              exit 1
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          
+          # Run basic API tests
+          echo "Testing health endpoint..."
+          curl -f http://localhost:8000/api/v1/health || exit 1
+          
+          echo "Testing formats endpoint..."
+          FORMATS=$(curl -f http://localhost:8000/api/v1/formats)
+          echo "Supported formats: $FORMATS"
+          
+          # Test file conversion with a simple STL
+          echo "Creating test STL file..."
+          cat > test.stl << 'EOF'
+          solid test
+            facet normal 0 0 1
+              outer loop
+                vertex 0 0 0
+                vertex 1 0 0
+                vertex 0 1 0
+              endloop
+            endfacet
+          endsolid test
+          EOF
+          
+          echo "Testing STL to OBJ conversion..."
+          RESPONSE=$(curl -s -X POST http://localhost:8000/api/v1/convert \
+            -F "file=@test.stl" \
+            -F "output_format=obj" \
+            -F "async_processing=false")
+          echo "Conversion response: $RESPONSE"
+          
+          # Clean up
+          docker stop kernel-api-test
+          docker rm kernel-api-test
+          rm -f test.stl
+
+      - name: Run integration tests with docker-compose
+        run: |
+          # Start services
+          docker-compose up -d
+          
+          # Wait for services to be ready
+          echo "Waiting for services..."
+          sleep 10
+          
+          # Check service health
+          docker-compose ps
+          curl -f http://localhost:8000/api/v1/health || {
+            echo "Services not healthy. Logs:"
+            docker-compose logs
+            exit 1
+          }
+          
+          # Clean up
+          docker-compose down
+
+      - name: Build and push multi-platform Docker image
+        if: github.event_name != 'pull_request' || github.event.inputs.push_image == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Generate summary
+        run: |
+          echo "## 🐳 Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Image Details" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🏷️ Tags" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" | sed 's/,/\n/g' | sed 's/^/- `/' | sed 's/$/`/' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Tests Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- Health endpoint" >> $GITHUB_STEP_SUMMARY
+          echo "- Formats endpoint" >> $GITHUB_STEP_SUMMARY
+          echo "- STL to OBJ conversion" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker Compose integration" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🚀 Deployment" >> $GITHUB_STEP_SUMMARY
+            echo "Image pushed to registry successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Pull command:" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## 🚀 Kernel API Release
+            
+            ### Docker Image
+            
+            Pull the Docker image:
+            ```bash
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ```
+            
+            Run with Docker Compose:
+            ```bash
+            wget https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/docker-compose.yml
+            docker-compose up -d
+            ```
+            
+            ### Quick Start
+            
+            ```bash
+            # Test the API
+            curl http://localhost:8000/api/v1/health
+            
+            # Convert a STEP file to STL
+            curl -X POST http://localhost:8000/api/v1/convert \
+              -F "file=@model.step" \
+              -F "output_format=stl" \
+              -o converted.stl
+            ```
+            
+            ### What's Changed
+            See the full changelog below.

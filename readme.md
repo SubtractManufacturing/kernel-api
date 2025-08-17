@@ -423,8 +423,51 @@ For full STEP/IGES support without segmentation faults, use WSL2:
 
 This allows you to run the Linux version of the API on Windows with full OpenCascade support.
 
-## Additional Documentation
+## Documentation
 
-- 📚 [STEP Conversion Solutions Guide](docs/STEP_CONVERSION_GUIDE.md) - Comprehensive guide for handling STEP files
-- 🛠️ [Utilities Documentation](utils/README.md) - How to use the conversion utilities
-- 📋 [API Planning Overview](planning/overview.md) - Development roadmap
+### 📚 Core Documentation
+- **[API Integration Guide](docs/API_INTEGRATION_GUIDE.md)** - How to integrate the API into your software
+- **[API Reference](docs/API_REFERENCE.md)** - Complete API endpoint documentation
+- **[Use Cases Guide](docs/USE_CASES.md)** - Real-world applications and examples
+
+### 🚀 Development Documentation
+- **[Release Process](RELEASE_PROCESS.md)** - How to create and publish releases
+- **[Changelog](CHANGELOG.md)** - Version history and changes
+- **[STEP Conversion Guide](docs/STEP_CONVERSION_GUIDE.md)** - Solutions for STEP file handling
+- **[WSL2 Setup Guide](docs/setup_wsl.md)** - Run Linux version on Windows
+
+### 🛠️ Additional Resources
+- **[Utilities Documentation](utils/README.md)** - Command-line tools and utilities
+- **[Planning Overview](planning/overview.md)** - Development roadmap
+
+## 🏷️ Versioning and Releases
+
+This project uses [Semantic Versioning](https://semver.org/). To create a new release:
+
+```bash
+# Create a patch release (bug fixes)
+python scripts/create_release.py patch "Fix description"
+
+# Create a minor release (new features)
+python scripts/create_release.py minor "Add new feature"
+
+# Create a major release (breaking changes)
+python scripts/create_release.py major "Breaking API changes"
+```
+
+See [Release Process](RELEASE_PROCESS.md) for detailed instructions.
+
+## 🐳 Docker Support
+
+Run the API in Docker for the best compatibility:
+
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Or pull from GitHub Container Registry (when available)
+docker pull ghcr.io/yourusername/kernel-api:latest
+docker run -p 8000:8000 ghcr.io/yourusername/kernel-api:latest
+```
+
+Docker provides full STEP/IGES support without platform-specific issues.

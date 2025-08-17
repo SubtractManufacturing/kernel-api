@@ -22,32 +22,51 @@ Before creating a release, ensure:
 
 ## 🚀 Creating a Release
 
-### Method 1: Using Release Scripts (Recommended)
+### Method 1: Using Python Release Script (Recommended - Cross-Platform)
+
+The Python script works on all platforms (Windows, Linux, Mac):
+
+```bash
+# Create a patch release (bug fixes)
+python scripts/create_release.py patch "Fix STEP file conversion issue"
+
+# Create a minor release (new features)
+python scripts/create_release.py minor "Add support for IGES format"
+
+# Create a major release (breaking changes)
+python scripts/create_release.py major "API v2 with breaking changes"
+
+# Default patch release
+python scripts/create_release.py
+```
+
+#### What the script does:
+1. Checks that your working directory is clean
+2. Shows current version and calculates new version
+3. Displays recent commits since last release
+4. Updates version in `app/__init__.py`
+5. Creates a git commit for the version bump
+6. Creates an annotated git tag
+7. Provides instructions for pushing to GitHub
+
+### Method 2: Using Platform-Specific Scripts
 
 #### On Linux/Mac/WSL:
 ```bash
 # Make script executable (first time only)
 chmod +x scripts/release.sh
 
-# Create a patch release (bug fixes)
+# Create releases
 ./scripts/release.sh patch "Fix STEP file conversion issue"
-
-# Create a minor release (new features)
 ./scripts/release.sh minor "Add support for IGES format"
-
-# Create a major release (breaking changes)
 ./scripts/release.sh major "API v2 with breaking changes"
 ```
 
 #### On Windows (PowerShell):
 ```powershell
-# Create a patch release
+# Create releases
 .\scripts\release.ps1 -BumpType patch -Message "Fix STEP file conversion issue"
-
-# Create a minor release
 .\scripts\release.ps1 -BumpType minor -Message "Add support for IGES format"
-
-# Create a major release
 .\scripts\release.ps1 -BumpType major -Message "API v2 with breaking changes"
 ```
 

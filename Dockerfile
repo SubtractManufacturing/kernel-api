@@ -1,35 +1,33 @@
 # Multi-stage build for better reliability and smaller final image
 FROM python:3.12-slim as builder
 
-# Install build dependencies
-RUN apt-get update || true && \
+# Install build dependencies only if needed
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     gcc \
     g++ \
-    make \
-    || true
-
-# Create virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies
+WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip wheel && \
+    pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
 # Final stage
 FROM python:3.12-slim
 
-# Install runtime dependencies only
-RUN apt-get update || true && \
+# Install runtime dependencies only if needed
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     libgomp1 \
-    && rm -rf /var/lib/apt/lists/* || true
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Copy wheels from builder and install
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir /wheels/* && \
+    rm -rf /wheels
 
 # Set environment
 ENV PYTHONUNBUFFERED=1

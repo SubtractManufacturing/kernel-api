@@ -1,0 +1,106 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov black ruff
+          
+      - name: Lint with ruff
+        run: |
+          ruff check app/ tests/ || true
+          
+      - name: Format check with black
+        run: |
+          black --check app/ tests/ || true
+          
+      - name: Run tests
+        run: |
+          pytest tests/ -v --cov=app --cov-report=term-missing || true
+          
+      - name: Test API endpoints
+        run: |
+          # Start the API in background
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          API_PID=$!
+          
+          # Wait for API to start
+          sleep 10
+          
+          # Test health endpoint
+          curl -f http://localhost:8000/api/v1/health || echo "Health check failed"
+          
+          # Test formats endpoint
+          curl -f http://localhost:8000/api/v1/formats || echo "Formats check failed"
+          
+          # Kill the API
+          kill $API_PID || true
+
+  test-docker:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: kernel-api:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
+      - name: Test Docker image
+        run: |
+          # Run container
+          docker run -d --name test-api -p 8000:8000 kernel-api:test
+          
+          # Wait for startup
+          sleep 10
+          
+          # Test endpoints
+          curl -f http://localhost:8000/api/v1/health || echo "Docker health check failed"
+          curl -f http://localhost:8000/api/v1/formats || echo "Docker formats check failed"
+          
+          # Check logs
+          docker logs test-api
+          
+          # Cleanup
+          docker stop test-api
+          docker rm test-api

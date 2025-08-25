@@ -1,0 +1,18 @@
+{
+  "functions": {
+    "app/main.py": {
+      "runtime": "python3.12"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/app/main"
+    }
+  ],
+  "build": {
+    "env": {
+      "PYTHON_VERSION": "3.12"
+    }
+  }
+}

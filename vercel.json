@@ -1,7 +1,7 @@
 {
   "functions": {
     "app/main.py": {
-      "runtime": "python3.12"
+      "runtime": "python3.9"
     }
   },
   "rewrites": [
@@ -9,10 +9,5 @@
       "source": "/(.*)",
       "destination": "/app/main"
     }
-  ],
-  "build": {
-    "env": {
-      "PYTHON_VERSION": "3.12"
-    }
-  }
+  ]
 }

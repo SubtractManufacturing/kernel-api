@@ -1,20 +1,70 @@
-venv/
-venv_*/
-*.pyc
+# Python
 __pycache__/
-.git/
-.gitignore
-.env
-*.log
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
 .pytest_cache/
+*.cover
 .coverage
+.coverage.*
 htmlcov/
-.DS_Store
+.tox/
+.hypothesis/
+
+# Virtual environments
+bin/
+include/
+lib/
+lib64/
+share/
+pyvenv.cfg
+venv_wsl/
+venv*/
+.venv*/
+
+# IDE
+.vscode/
+.idea/
 *.swp
 *.swo
+*~
+.DS_Store
+
+# Project specific
 uploads/*
 outputs/*
 temp/*
-!uploads/.gitkeep
-!outputs/.gitkeep
-!temp/.gitkeep
+*.log
+*.pid
+
+# Git
+.git/
+.gitignore
+
+# Docker
+.dockerignore
+docker-compose*.yml
+Dockerfile*
+
+# Documentation
+*.md
+docs/
+LICENSE
+
+# Tests
+# Keep test files for Docker testing
+# tests/
+pytest.ini
+.pytest_cache/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml

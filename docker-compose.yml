@@ -2,7 +2,11 @@ version: '3.8'
 
 services:
   api:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: kernel-api:latest
+    container_name: kernel-api
     ports:
       - "8000:8000"
     volumes:
@@ -13,11 +17,34 @@ services:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=INFO
       - ENABLE_OPENCASCADE=true
+      - MAX_UPLOAD_SIZE=200000000  # 200MB
+      - DEFAULT_DEFLECTION=0.1
+      - DEFAULT_ANGULAR_DEFLECTION=0.5
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
+    networks:
+      - kernel-network
     
   # Optional: Redis for async processing
   redis:
     image: redis:alpine
+    container_name: kernel-redis
     ports:
       - "6379:6379"
     restart: unless-stopped
+    networks:
+      - kernel-network
+    volumes:
+      - redis-data:/data
+
+networks:
+  kernel-network:
+    driver: bridge
+
+volumes:
+  redis-data:

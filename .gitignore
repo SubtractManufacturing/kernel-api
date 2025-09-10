@@ -1,8 +1,3 @@
-node_modules
-
-/.cache
-/build
-.env
 # Python bytecode
 __pycache__/
 *.py[cod]
@@ -27,7 +22,6 @@ wheels/
 *.egg
 
 # Virtual environments
-*.env
 .venv
 env/
 venv/
@@ -35,6 +29,8 @@ ENV/
 env.bak/
 venv.bak/
 venv_wsl/
+venv_*/
+.venv*/
 
 # IDE specific files
 .idea/
@@ -79,11 +75,13 @@ celerybeat-schedule
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# Environment variables
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+*.env
 
 # mypy
 .mypy_cache/
@@ -113,26 +111,45 @@ pgdata/
 secrets.json
 
 
-db_template.DBMl
+# Claude/AI specific
+.claude/
+claude.json
 
-page_template.html
+# Database migrations
+alembic/versions/*.py
+!alembic/versions/__init__.py
 
-CLAUDE.md
-.claude
+# Deployment
+vercel.json
+.vercel/
 
-./drizzle
-/drizzle
-/logs
-/scripts
+# Project specific directories  
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+temp/*
+!temp/.gitkeep
 
-# Project specific directories
-uploads/
-outputs/
-temp/
+# Test files
+test_*.stl
+test_*.step
+test_*.iges
+test_*.obj
+test_*.gltf
+test_*.glb
+*.test.*
 
-# Keep folder structure but ignore generated files
-*.stl
-*.obj
-*.glb
-*.gltf
-!tests/fixtures/*.stl
+# OS specific
+Thumbs.db
+desktop.ini
+
+# Docker test scripts
+docker_test.*
+docker-compose.override.yml
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+kernel_api.db

@@ -71,12 +71,16 @@ async def convert_file(
                 angular_deflection or settings.DEFAULT_ANGULAR_DEFLECTION
             )
             
-            return ConversionResponse(
+            # Store the job status for later retrieval
+            response = ConversionResponse(
                 job_id=job_id,
                 status=ConversionStatus.COMPLETED,
                 output_file=output_path,
                 message="Conversion completed successfully"
             )
+            conversion_service.store_job_status(job_id, response)
+            
+            return response
             
     except Exception as e:
         logger.error(f"Conversion failed for job {job_id}: {str(e)}")
@@ -95,8 +99,24 @@ async def get_conversion_status(job_id: str):
 async def download_result(job_id: str):
     status = conversion_service.get_job_status(job_id)
     
+    # If job not found in memory, check if output file exists (for orphaned jobs)
     if status is None:
-        raise HTTPException(status_code=404, detail="Job not found")
+        # Look for files matching the job_id pattern in outputs directory
+        import glob
+        pattern = os.path.join(settings.OUTPUT_DIR, f"{job_id}_*")
+        matching_files = glob.glob(pattern)
+        
+        if matching_files:
+            # Found orphaned output file, return it
+            output_file = matching_files[0]
+            logger.info(f"Found orphaned output file for job {job_id}: {output_file}")
+            return FileResponse(
+                path=output_file,
+                filename=os.path.basename(output_file),
+                media_type="application/octet-stream"
+            )
+        else:
+            raise HTTPException(status_code=404, detail="Job not found")
     
     if status.status != ConversionStatus.COMPLETED:
         raise HTTPException(

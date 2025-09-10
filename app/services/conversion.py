@@ -95,3 +95,7 @@ class ConversionService:
     
     def get_job_status(self, job_id: str) -> Optional[ConversionResponse]:
         return self.jobs.get(job_id)
+    
+    def store_job_status(self, job_id: str, status: ConversionResponse):
+        """Store job status for later retrieval"""
+        self.jobs[job_id] = status

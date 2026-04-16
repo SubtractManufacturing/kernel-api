@@ -1,10 +1,15 @@
 import os
-import tempfile
 import numpy as np
 import trimesh
+import pygltflib
 from app.services.conversion_pipeline import ConversionPipeline
-from app.services.converters import MeshData
+from app.services.converters import MeshData, ensure_vertex_normals
+from app.services.exporters.gltf_exporter import (
+    _BASE_COLOR_FACTOR, _METALLIC_FACTOR, _ROUGHNESS_FACTOR, _DOUBLE_SIDED,
+    GLTFExporter,
+)
 from app.core.config import settings
+
 
 def create_test_stl_file(file_path: str):
     """Create a simple test STL file (cube)"""
@@ -114,6 +119,108 @@ def test_quality_presets():
     
     print("[OK] Quality presets working")
 
+def test_glb_has_canonical_material():
+    """GLB exported from STL must contain exactly one canonical PBR material."""
+    print("\n=== Testing GLB canonical material ===")
+
+    test_stl = os.path.join(settings.TEMP_DIR, "test_material.stl")
+    create_test_stl_file(test_stl)
+
+    pipeline = ConversionPipeline()
+    output_file = pipeline.convert(
+        input_path=test_stl,
+        output_format='glb',
+        quality='medium',
+    )
+
+    gltf = pygltflib.GLTF2().load(output_file)
+    assert len(gltf.materials) == 1, f"Expected 1 material, got {len(gltf.materials)}"
+
+    pbr = gltf.materials[0].pbrMetallicRoughness
+    assert pbr is not None, "Material must have pbrMetallicRoughness"
+    assert abs(pbr.metallicFactor - _METALLIC_FACTOR) < 1e-4, "Metallic factor mismatch"
+    assert abs(pbr.roughnessFactor - _ROUGHNESS_FACTOR) < 1e-4, "Roughness factor mismatch"
+    assert gltf.materials[0].doubleSided == _DOUBLE_SIDED, "doubleSided mismatch"
+
+    print("[OK] GLB canonical material verified")
+    return output_file
+
+
+def test_glb_has_normals():
+    """GLB exported from STL must include a NORMAL accessor in its primitive."""
+    print("\n=== Testing GLB NORMAL attribute ===")
+
+    test_stl = os.path.join(settings.TEMP_DIR, "test_normals.stl")
+    create_test_stl_file(test_stl)
+
+    pipeline = ConversionPipeline()
+    output_file = pipeline.convert(
+        input_path=test_stl,
+        output_format='glb',
+        quality='medium',
+    )
+
+    gltf = pygltflib.GLTF2().load(output_file)
+    assert len(gltf.meshes) > 0, "GLB must contain at least one mesh"
+    prim = gltf.meshes[0].primitives[0]
+    assert prim.attributes.NORMAL is not None, "GLB primitive must have NORMAL attribute"
+
+    print("[OK] GLB NORMAL attribute verified")
+
+
+def test_ensure_vertex_normals_fills_missing():
+    """ensure_vertex_normals must compute normals when a converter leaves them empty (IGES case)."""
+    print("\n=== Testing ensure_vertex_normals with empty normals ===")
+
+    mesh_data = MeshData()
+    mesh_data.vertices = np.array([
+        [0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1],
+    ], dtype=np.float32)
+    mesh_data.faces = np.array([[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]], dtype=np.int32)
+    # normals intentionally left empty, mirroring IGESConverter behaviour
+
+    assert mesh_data.normals.size == 0, "Precondition: normals should be empty"
+
+    result = ensure_vertex_normals(mesh_data)
+
+    assert result.normals.shape == result.vertices.shape, (
+        f"Normals shape {result.normals.shape} must match vertices shape {result.vertices.shape}"
+    )
+    norms = np.linalg.norm(result.normals, axis=1)
+    assert np.all(norms > 0), "All vertex normals must be non-zero after computation"
+
+    print("[OK] ensure_vertex_normals fills missing normals correctly")
+
+
+def test_pygltflib_fallback_has_material_and_normals():
+    """The pygltflib fallback path must also produce a canonical material + NORMAL accessor."""
+    print("\n=== Testing pygltflib fallback canonical output ===")
+
+    mesh_data = MeshData()
+    mesh_data.vertices = np.array([
+        [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+    ], dtype=np.float32)
+    mesh_data.faces = np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int32)
+    mesh_data.normals = np.tile([0.0, 0.0, 1.0], (4, 1)).astype(np.float32)
+
+    output_path = os.path.join(settings.TEMP_DIR, "test_fallback.glb")
+    exporter = GLTFExporter()
+    exporter._export_with_pygltflib(mesh_data, output_path, binary=True)
+
+    gltf = pygltflib.GLTF2().load(output_path)
+
+    assert len(gltf.materials) == 1, "Fallback GLB must have exactly one material"
+    pbr = gltf.materials[0].pbrMetallicRoughness
+    assert abs(pbr.roughnessFactor - _ROUGHNESS_FACTOR) < 1e-4
+    assert gltf.materials[0].doubleSided == _DOUBLE_SIDED
+
+    prim = gltf.meshes[0].primitives[0]
+    assert prim.material == 0, "Primitive must reference material index 0"
+    assert prim.attributes.NORMAL is not None, "Fallback GLB must include NORMAL attribute"
+
+    print("[OK] pygltflib fallback produces canonical material and NORMAL accessor")
+
+
 def test_supported_formats():
     """Test getting supported formats"""
     print("\n=== Testing Supported Formats ===")
@@ -145,6 +252,10 @@ def main():
         test_stl_to_obj_conversion()
         test_stl_to_glb_conversion()
         test_quality_presets()
+        test_ensure_vertex_normals_fills_missing()
+        test_glb_has_canonical_material()
+        test_glb_has_normals()
+        test_pygltflib_fallback_has_material_and_normals()
         
         print("\n" + "=" * 40)
         print("All conversion tests passed successfully!")

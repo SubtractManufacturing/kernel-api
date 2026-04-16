@@ -2,7 +2,7 @@ import os
 from typing import Dict, Optional, Any
 from app.core.logging import get_logger
 from app.core.config import settings
-from app.services.converters import MeshData
+from app.services.converters import MeshData, ensure_vertex_normals
 from app.services.converters.step_converter_ocp import STEPConverterOCP
 from app.services.converters.iges_converter import IGESConverter
 from app.services.converters.stl_converter import STLConverter
@@ -92,7 +92,11 @@ class ConversionPipeline:
             # Step 1: Read and convert to mesh data
             converter = self.converters[input_ext]
             mesh_data = converter.read(input_path, **quality_params)
-            
+
+            # Ensure every format produces reliable vertex normals before export.
+            # Some converters (e.g. IGES) do not populate normals; this fills the gap.
+            mesh_data = ensure_vertex_normals(mesh_data)
+
             # Step 2: Apply mesh quality controls
             mesh_data = self._apply_mesh_controls(mesh_data, **kwargs)
             

@@ -273,6 +273,30 @@ curl "http://localhost:8000/api/v1/health"
 
 ---
 
+## GLTF / GLB Output
+
+All GLB and GLTF files produced by this API are normalised for consistent rendering in any WebGL viewer (Three.js, React Three Fiber, Babylon.js, etc.).
+
+### Vertex normals
+
+Vertex normals are always present in GLB/GLTF output. If the source converter does not produce normals (for example IGES), the pipeline computes them automatically before export using trimesh's per-vertex normal averaging. This ensures uniform shading regardless of source format.
+
+### Default PBR material
+
+Every GLB/GLTF export contains exactly one material with the following PBR properties:
+
+| Property | Value |
+|----------|-------|
+| `baseColorFactor` | `[0.8, 0.8, 0.8, 1.0]` (light grey, opaque) |
+| `metallicFactor` | `0.0` |
+| `roughnessFactor` | `0.45` |
+| `doubleSided` | `true` |
+| `alphaMode` | `OPAQUE` |
+
+CAD face colours encoded in the original STEP or IGES file are **not** preserved in the exported mesh; the output is intentionally appearance-neutral so that STEP, IGES, and STL sources render identically in downstream viewers.
+
+---
+
 ## Data Models
 
 ### ConversionStatus Enum

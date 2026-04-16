@@ -6,6 +6,7 @@ Production-ready API for converting CAD files (STEP, IGES, BREP) to mesh formats
 
 - ✅ **OpenCascade Integration**: Full STEP/IGES/BREP support via cadquery-ocp
 - ✅ **Multiple Output Formats**: STL, OBJ, GLTF, GLB
+- ✅ **Consistent Web Preview**: GLB/GLTF output uses a canonical PBR material and guaranteed vertex normals so STEP, IGES, and STL sources render identically in Three.js / React Three Fiber
 - ✅ **Quality Control**: Configurable deflection and angular deflection settings
 - ✅ **Async Processing**: Redis-backed job queue for large files
 - ✅ **Auto Cleanup**: Automatic file cleanup with configurable TTL

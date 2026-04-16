@@ -63,7 +63,9 @@ This is a CAD-to-mesh conversion API built with FastAPI. The system converts eng
 - IGES/IGS → `iges_converter.py`
 - STL → `stl_converter.py`
 
-**MeshData Abstraction:** All converters produce a common `MeshData` object containing vertices and faces, allowing uniform export to any output format.
+**MeshData Abstraction:** All converters produce a common `MeshData` object containing vertices, faces, and normals, allowing uniform export to any output format. After each converter runs, `ensure_vertex_normals()` (in `app/services/converters/__init__.py`) guarantees vertex normals are populated before the exporter is called—even for formats like IGES whose converter does not compute them natively.
+
+**GLB/GLTF Visual Consistency:** Every GLB/GLTF export applies a single canonical PBR material (light grey, non-metallic, `roughnessFactor=0.45`, `doubleSided=true`) defined as constants in `app/services/exporters/gltf_exporter.py`. CAD face colours are not preserved in `MeshData` today; the output is intentionally appearance-neutral so all source formats look identical in Three.js / React Three Fiber viewers.
 
 **Quality Control:** Conversion quality controlled via deflection parameters:
 - `deflection`: Surface deviation tolerance (0.001-1.0)

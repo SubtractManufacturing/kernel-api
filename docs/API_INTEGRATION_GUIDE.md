@@ -499,6 +499,22 @@ spec:
 | Embedded Systems | libcurl |
 | Web Browser | Fetch API with CORS |
 
+## GLB/GLTF and Three.js / React Three Fiber
+
+GLB and GLTF files produced by this API are pre-normalised for web viewers:
+
+- **Vertex normals are always included.** The pipeline guarantees that every exported GLB has a `NORMAL` attribute in its mesh primitive. You do not need to call `computeVertexNormals()` on the Three.js side.
+- **One canonical PBR material is embedded.** Every GLB includes exactly one `pbrMetallicRoughness` material (light grey, `metallicFactor=0`, `roughnessFactor=0.45`, `doubleSided=true`). Models converted from STEP, IGES, and STL will appear visually identical out of the box.
+- **Do not assume the output material matches the original CAD appearance.** CAD face colours from STEP/IGES are not preserved in the current pipeline; the embedded material is a neutral default intended for previews, not faithful CAD presentation.
+
+If you load these GLBs with `useGLTF` (React Three Fiber / `@react-three/drei`) or `GLTFLoader` (plain Three.js), no extra material setup is needed for a consistent look:
+
+```javascript
+// React Three Fiber — no traversal/material override required
+const { scene } = useGLTF('/api/v1/download/<job_id>');
+return <primitive object={scene} />;
+```
+
 ## Troubleshooting
 
 ### Common Issues and Solutions

@@ -50,6 +50,7 @@ def prepare_for_viewer(step_file):
 - No CAD licenses required for end users
 - Cross-platform compatibility
 - Lightweight files for web delivery
+- **Consistent shading across all source formats**: GLB/GLTF output from this API includes guaranteed vertex normals and a single canonical PBR material, so STEP, IGES, and STL models render identically in Three.js, React Three Fiber, and other WebGL viewers without any viewer-side material overrides.
 
 ### 2. 3D Printing Preparation
 **Scenario**: Preparing CAD models for 3D printing by converting to STL format.
